@@ -17,7 +17,6 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=virtual-facility
       - RABBITMQ_URL=amqp://rabbitmq:5672
-      - NATS_URL=nats://nats:4222
     volumes:
       - ./libs:/usr/src/app/libs
       - ./package.json:/usr/src/app/package.json
@@ -27,7 +26,6 @@ services:
       - virtual-facility-db
       - workflows-service
       - rabbitmq
-      - nats
   virtual-facility-db:
     image: postgres:13.2-alpine
     environment:
@@ -51,7 +49,6 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=workflows-service
       - RABBITMQ_URL=amqp://rabbitmq:5672
-      - NATS_URL=nats://nats:4222
     deploy:
       replicas: 3
     volumes:
@@ -62,7 +59,6 @@ services:
     depends_on:
       - workflows-service-db
       - rabbitmq
-      - nats
   workflows-service-db:
     image: postgres:13.2-alpine
     environment:
@@ -80,6 +76,7 @@ services:
         - APP_NAME=alarms-service
     command: npm run start:dev -- alarms-service
     environment:
+      - RABBITMQ_URL=amqp://rabbitmq:5672
       - NATS_URL=nats://nats:4222
     volumes:
       - ./libs:/usr/src/app/libs
@@ -87,8 +84,8 @@ services:
       - ./tsconfig.json:/usr/src/app/tsconfig.json
       - ./apps/alarms-service:/usr/src/app/apps/alarms-service
     depends_on:
+      - rabbitmq
       - nats
-      - alarms-generator
   alarms-generator:
     build:
       context: .
@@ -131,12 +128,14 @@ services:
     command: npm run start:dev -- notifications-service
     environment:
       - NATS_URL=nats://nats:4222
+      - RABBITMQ_URL=amqp://rabbitmq:5672
     volumes:
       - ./libs:/usr/src/app/libs
       - ./package.json:/usr/src/app/package.json
       - ./tsconfig.json:/usr/src/app/tsconfig.json
       - ./apps/notifications-service:/usr/src/app/apps/notifications-service
     depends_on:
+      - rabbitmq
       - nats
 
   nats:

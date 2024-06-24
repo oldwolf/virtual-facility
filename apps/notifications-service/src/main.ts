@@ -12,10 +12,11 @@ async function bootstrap() {
 
   app.connectMicroservice<MicroserviceOptions>(
     {
-      transport: Transport.NATS,
+      transport: Transport.RMQ,
       options: {
-        servers: [configService.get('NATS_URL')],
+        urls: [configService.get<string>('RABBITMQ_URL')],
         queue: 'notifications-service',
+        noAck: false,
       },
     },
     { inheritAppConfig: true },

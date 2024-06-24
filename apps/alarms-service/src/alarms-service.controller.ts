@@ -1,6 +1,6 @@
 import { Controller, Inject, Logger } from '@nestjs/common';
 import { ClientProxy, EventPattern, Payload } from '@nestjs/microservices';
-import { MESSAGE_BROKER } from './constant';
+import { NATS_MESSAGE_BROKER, NOTIFICATIONS_SERViCE } from './constant';
 import { lastValueFrom } from 'rxjs';
 
 @Controller()
@@ -8,7 +8,10 @@ export class AlarmsServiceController {
   private readonly logger = new Logger(AlarmsServiceController.name);
 
   constructor(
-    @Inject(MESSAGE_BROKER) private readonly messageBroker: ClientProxy,
+    @Inject(NATS_MESSAGE_BROKER)
+    private readonly natsMessageBroker: ClientProxy,
+    @Inject(NOTIFICATIONS_SERViCE)
+    private readonly notificationsService: ClientProxy,
   ) {}
 
   @EventPattern('alarm.created')
@@ -18,15 +21,15 @@ export class AlarmsServiceController {
     );
 
     const alarmClassification = await lastValueFrom(
-      this.messageBroker.send('alarm.classify', data),
+      this.notificationsService.send('alarm.classify', data),
     );
     this.logger.debug(
       `Alarm "${data.name}" has been classified as "${alarmClassification.category}"`,
     );
 
-    const notify$ = this.messageBroker.emit('notification.send', {
+    const notify$ = this.notificationsService.emit('notification.send', {
       alarm: data,
-      classification: alarmClassification,
+      category: alarmClassification.category,
     });
     await lastValueFrom(notify$);
     this.logger.debug(`Dispatched "notification.send" event.`);
