@@ -3,24 +3,15 @@ import { AlarmsServiceController } from './alarms-service.controller';
 import { AlarmsServiceService } from './alarms-service.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { NATS_MESSAGE_BROKER, NOTIFICATIONS_SERViCE } from './constant';
+import { NOTIFICATIONS_SERViCE } from './constant';
+import { TracingModule } from '@app/tracing';
+import { NatsClientModule } from '@app/tracing/nats-client/nats-client.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    NatsClientModule,
     ClientsModule.registerAsync([
-      {
-        name: NATS_MESSAGE_BROKER,
-        useFactory: (configService: ConfigService) => {
-          return {
-            transport: Transport.NATS,
-            options: {
-              servers: configService.get('NATS_URL'),
-            },
-          };
-        },
-        inject: [ConfigService],
-      },
       {
         name: NOTIFICATIONS_SERViCE,
         useFactory: (configService: ConfigService) => {
@@ -35,6 +26,7 @@ import { NATS_MESSAGE_BROKER, NOTIFICATIONS_SERViCE } from './constant';
         inject: [ConfigService],
       },
     ]),
+    TracingModule,
   ],
   controllers: [AlarmsServiceController],
   providers: [AlarmsServiceService],

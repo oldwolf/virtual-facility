@@ -4,10 +4,11 @@ import { UpdateBuildingDto } from './dto/update-building.dto';
 import { CreateWorkflowDto } from '@app/workflows';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Building } from './entities/building.entity';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { WORKFLOWS_SERVICE } from '../constant';
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
+import { Outbox } from '../outbox/entities/outbox.entity';
 
 @Injectable()
 export class BuildingsService {
@@ -18,11 +19,42 @@ export class BuildingsService {
     private readonly buildingRepository: Repository<Building>,
     @Inject(WORKFLOWS_SERVICE)
     private readonly workflowsService: ClientProxy,
+    private readonly dataSource: DataSource,
   ) {}
 
-  async create(createBuildingDto: CreateBuildingDto) {
-    await this.createWorkflow(1);
-    return 'This action adds a new building';
+  async create(createBuildingDto: CreateBuildingDto): Promise<Building> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    const buildingRepository = queryRunner.manager.getRepository(Building);
+    const outboxRepository = queryRunner.manager.getRepository(Outbox);
+
+    try {
+      const building = buildingRepository.create({
+        ...createBuildingDto,
+      });
+      const newBuildingEntity = await buildingRepository.save(building);
+
+      await outboxRepository.save({
+        type: 'workflows.create',
+        payload: {
+          name: 'My Workflow',
+          buildingId: building.id,
+        },
+        target: WORKFLOWS_SERVICE.description,
+      });
+
+      // await this.createWorkflow(newBuildingEntity.id);
+
+      await queryRunner.commitTransaction();
+
+      return newBuildingEntity;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async findAll(): Promise<Building[]> {

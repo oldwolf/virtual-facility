@@ -16,6 +16,7 @@ async function bootstrap() {
       options: {
         urls: [configService.get<string>('RABBITMQ_URL')],
         queue: 'workflows-service',
+        noAck: false,
       },
     },
     { inheritAppConfig: true },

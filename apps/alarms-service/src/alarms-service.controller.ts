@@ -1,17 +1,17 @@
-import { Controller, Inject, Logger } from '@nestjs/common';
+import { Controller, Inject } from '@nestjs/common';
 import { ClientProxy, EventPattern, Payload } from '@nestjs/microservices';
-import { NATS_MESSAGE_BROKER, NOTIFICATIONS_SERViCE } from './constant';
+import { NOTIFICATIONS_SERViCE } from './constant';
 import { lastValueFrom } from 'rxjs';
+import { TracingLogger } from '@app/tracing/tracing.logger';
+import { NatsClientProxy } from '@app/tracing/nats-client/nats-client.proxy';
 
 @Controller()
 export class AlarmsServiceController {
-  private readonly logger = new Logger(AlarmsServiceController.name);
-
   constructor(
-    @Inject(NATS_MESSAGE_BROKER)
-    private readonly natsMessageBroker: ClientProxy,
+    private readonly natsMessageBroker: NatsClientProxy,
     @Inject(NOTIFICATIONS_SERViCE)
     private readonly notificationsService: ClientProxy,
+    private readonly logger: TracingLogger,
   ) {}
 
   @EventPattern('alarm.created')
@@ -21,7 +21,7 @@ export class AlarmsServiceController {
     );
 
     const alarmClassification = await lastValueFrom(
-      this.notificationsService.send('alarm.classify', data),
+      this.natsMessageBroker.send('alarm.classify', data),
     );
     this.logger.debug(
       `Alarm "${data.name}" has been classified as "${alarmClassification.category}"`,

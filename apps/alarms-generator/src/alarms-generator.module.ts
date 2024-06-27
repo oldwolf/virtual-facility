@@ -4,13 +4,14 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ALARMS_SERVICE } from './constants';
+import { TracingModule } from '@app/tracing';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    ConfigModule.forRoot({ isGlobal: true }),
     ClientsModule.registerAsync([
       {
-        imports: [ConfigModule.forRoot()],
         name: ALARMS_SERVICE,
         useFactory: (configService: ConfigService) => {
           return {
@@ -23,6 +24,7 @@ import { ALARMS_SERVICE } from './constants';
         inject: [ConfigService],
       },
     ]),
+    TracingModule,
   ],
   controllers: [],
   providers: [AlarmsGeneratorService],
